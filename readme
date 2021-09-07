@@ -1,0 +1,25 @@
+doasedit(8)
+
+NAME
+    doasedit - simple sudoedit alternative for doas.
+
+SYNOPSIS
+    doasedit file
+
+DESCRIPTION
+    doasedit allows a permitted user to edit file as the superuser.
+
+INSTALLATION
+    Globally (for all users):
+
+        # curl -L http://git.io/doasedit.raw | doas tee /usr/local/bin/doasedit
+        # chmod +x /usr/local/bin/doasedit
+
+EXAMPLES
+    To run an editor as root:
+
+        $ doasedit /etc/doas.conf
+
+LICENSE
+    ISC License. See LICENSE file for copyright and license details.
+
