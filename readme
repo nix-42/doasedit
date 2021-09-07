@@ -12,7 +12,7 @@ DESCRIPTION
 INSTALLATION
     Globally (for all users):
 
-        # curl -L http://git.io/doasedit.raw | doas tee /usr/local/bin/doasedit
+        # curl -sL http://git.io/doasedit.raw | doas tee /usr/local/bin/doasedit
         # chmod +x /usr/local/bin/doasedit
 
 EXAMPLES
