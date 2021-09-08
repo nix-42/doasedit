@@ -1,47 +1,58 @@
 #!/usr/bin/env sh
 
 # doasedit
+# Link:         git.io/doasedit
+
+# Dependencies: opendoas <https://github.com/Duncaen/OpenDoas> or doas <https://cvsweb.openbsd.org/src/usr.bin/doas/>
 
 # Author:       Stanislav <git.io/monesonn>
-# Link:         git.io/doasedit
-# Description:  doasedit is shell script, like sudoedit, but for doas.
+# Description:  doas equivalent to sudoedit.
 # Licence:      ISC
 # Contribution: If you have some ideas, how to improve this script, feel free to make pull request or write an issue.
 
+# Tips:         Use this script with persist option in doas.conf file.
+
 # Catch arguments.
-if [ ! -z ${2} ]; then
+if [ -n "${2}" ]; then
     printf "%s\n" "doasedit: expected only one argument" >&2
     exit 1
-elif [ -z ${1} ]; then
+elif [ -z "${1}" ]; then
     printf "%s\n" "doasedit: no file path provided" >&2
     exit 1
-elif [ "$EUID" -eq 0 ]; then
+elif [ "$(id -u)" -eq 0 ]; then
     printf "%s\n" "doasedit: cannot be run as root" >&2
+    exit 1
+elif [ -d "${1}" ]; then
+    printf "%s\n" "doasedit: ${1} is a directory" >&2
     exit 1
 fi
 
 # Safe shell options.
-set -Eeuo pipefail
-IFS=$'\n\t'
+set -eu
 
-# Reset doas password promt. If you want, feel free to comment this line.
-doas -L
+# Reset doas password promt. If you want, feel free to comment this.
+case "$(uname -s | tr '[:upper:]' '[:lower:]')" in
+    linux) doas -L ;;
+esac
 
 # Absolute path to the source file (file for editing).
-src="$(doas realpath $1)"
+src="$(doas readlink -f "${1}")"
 
 # Filename for source file.
 filename="${src##*/}"
 
 # If filename have suffix then also use it for temporary file.
 # It's kinda useful for editors, that have plugins or something else for certain file extensions.
-[ "$filename" == "${filename##*.}" ] && filename_ext="" || filename_ext=".${filename##*.}"
+[ "$filename" = "${filename##*.}" ] && filename_ext="" || filename_ext=".${filename##*.}"
 
-# Use /dev/shm/ as tmp directory by setting TMPDIR env.
-export TMPDIR=/dev/shm/
+# Be sure /tmp as tmp directory by setting TMPDIR env.
+# export TMPDIR=/tmp
 
-# Create temporary file for source file.
-tempfile=$(mktemp --suffix "$filename_ext")
+# Create temporary directory.
+tmp_d=$(mktemp -d)
+
+# Create temporary file for source file in temporary directory.
+tmp_f="${tmp_d}/file${filename_ext}"
 
 # File writeability condition.
 if [ -w "$src" ]; then
@@ -50,35 +61,35 @@ if [ -w "$src" ]; then
 fi
 
 # Other conditions: if file exist, readable, etc.
-if [ -f "$src" ] && [ ! -r "$src" ]; then
-    doas cat $src > $tempfile || exit 1
-elif [ -r "$src" ]; then
-    cat $src > $tempfile || exit 1
-elif [ ! -f "$src" ]; then
+if [ -f "${src}" ] && [ ! -r "${src}" ]; then
+    doas cat "${src}" > "${tmp_f}" || exit 1
+elif [ -r "${src}" ]; then
+    cat "${src}" > "${tmp_f}" || exit 1
+elif [ ! -f "${src}" ]; then
     # Grant .rw-r--r-- permission for newly created files by default owned by root.
-    doas chmod -R 644 $tempfile
+    doas chmod -R 644 "${tmp_f}"
 else
     exit 1
 fi
 
-# Create copy of tempfile.
-tempcopy=$(mktemp --suffix "$filename_ext")
+# Create copy of temporary file.
+tmp_cf="${tmp_d}/copy"
 
-# Hooks for removing temp files.
-trap "rm -f $tempcopy $tempfile" EXIT HUP QUIT TERM INT ABRT
+# Hooks for recursive removing of temporary directory.
+trap 'rm -rf ${tmp_d}' EXIT HUP QUIT TERM INT ABRT
 
 # Move the contents of a temporary file to its copy for later comparison.
-cat "$tempfile" > "$tempcopy"
+cat "${tmp_f}" > "${tmp_cf}"
 
 # Editing the file by the user using the default editor, if not specified, the vi is used.
-${EDITOR:-vi} "$tempfile"
+${EDITOR:-vi} "${tmp_f}"
 
-# Compare tempfile and tempcopy.
-if cmp -s "$tempfile" "$tempcopy"; then
+# Compare temporary file and temporary copy.
+if cmp -s "${tmp_f}" "${tmp_cf}"; then
     printf "%s\n" "doasedit: $filename unchanged"
     exit 0
 else
-    doas cp -f "$tempfile" "$src"
+    doas cp -f "${tmp_f}" "${src}"
     printf "%s\n" "doasedit: $filename changes are accepted"
     exit 0
 fi
