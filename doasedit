@@ -46,13 +46,13 @@ filename="${src##*/}"
 [ "$filename" = "${filename##*.}" ] && filename_ext="" || filename_ext=".${filename##*.}"
 
 # Be sure /tmp as tmp directory by setting TMPDIR env.
-# export TMPDIR=/tmp
+export TMPDIR=/tmp
 
 # Create temporary directory.
 tmp_d=$(mktemp -d)
 
 # Create temporary file for source file in temporary directory.
-tmp_f="${tmp_d}/file${filename_ext}"
+tmp_f="${tmp_d}/${filename}$(xxd -l4 -ps /dev/urandom)${filename_ext}"
 
 # File writeability condition.
 if [ -w "$src" ]; then
@@ -67,13 +67,14 @@ elif [ -r "${src}" ]; then
     cat "${src}" > "${tmp_f}" || exit 1
 elif [ ! -f "${src}" ]; then
     # Grant .rw-r--r-- permission for newly created files by default owned by root.
-    doas chmod -R 644 "${tmp_f}"
+    touch ${tmp_f}
+    doas chmod -R 0644 "${tmp_f}"
 else
     exit 1
 fi
 
 # Create copy of temporary file.
-tmp_cf="${tmp_d}/copy"
+tmp_cf="${tmp_d}/${filename}$(xxd -l4 -ps /dev/urandom).copy"
 
 # Hooks for recursive removing of temporary directory.
 trap 'rm -rf ${tmp_d}' EXIT HUP QUIT TERM INT ABRT
