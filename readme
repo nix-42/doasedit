@@ -7,7 +7,7 @@ SYNOPSIS
     doasedit file
 
 DESCRIPTION
-    doasedit allows a permitted user to edit file as the non-root user.
+    doasedit allows a permitted user to edit root-owned files by running an unpriviledged editor.
 
 INSTALLATION
     Globally (for all users):
