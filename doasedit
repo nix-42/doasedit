@@ -12,7 +12,7 @@
 
 # Tips:         Use this script with enabled persistence in doas.conf file, like:
 #
-#                   # permit persist :wheel
+#                   `permit persist :wheel`
 #
 #               Also make sure that your doas.conf is owned by root with read-only permissions, like:
 #
