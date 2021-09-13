@@ -20,6 +20,15 @@ EXAMPLES
 
         $ doasedit /etc/doas.conf
 
+TIPS
+    Use this script with enabled persistence in doas.conf file, like:
+
+        `permit persist :wheel`
+
+    Also make sure that your doas.conf is owned by root with read-only permissions, like:
+    
+        # chown -c root:root /path/to/doas.conf && chmod 0400 path/to/doas.conf
+
 LICENSE
     ISC License. See `license` file for copyright and license details.
 
