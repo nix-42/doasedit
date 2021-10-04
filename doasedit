@@ -50,9 +50,9 @@ src="$(doas readlink -f "${1}")"
 # Filename for the source file.
 filename="${src##*/}"
 
-# If filename have suffix then also use it for a temporary file.
+# If filename have extension then also use it for a temporary file.
 # It's kinda useful for editors, that have plugins or something else for certain file extensions.
-[ "$filename" = "${filename##*.}" ] && filename_ext="" || filename_ext=".${filename##*.}"
+[ "$filename" = "${filename##*.}" ] && file_extension="" || file_extension=".${filename##*.}"
 
 # Be sure /tmp as tmp directory by setting TMPDIR env.
 export TMPDIR=/tmp
@@ -60,8 +60,14 @@ export TMPDIR=/tmp
 # Create a temporary directory.
 tmp_d=$(mktemp -d)
 
+# Hooks for recursive removing of a temporary directory.
+trap 'rm -rf ${tmp_d}' EXIT HUP QUIT TERM INT ABRT
+
+# Randomize suffix for temporary files.
+suffix=$(xxd -l4 -ps /dev/urandom)
+
 # Create a temporary file for the source file in a temporary directory.
-tmp_f="${tmp_d}/${filename}$(xxd -l4 -ps /dev/urandom)${filename_ext}"
+tmp_f="${tmp_d}/${filename}${suffix}${file_extension}"
 
 # File writeability condition.
 if [ -w "$src" ]; then
@@ -81,10 +87,7 @@ else
 fi
 
 # Create copy of the temporary file.
-tmp_cf="${tmp_d}/${filename}$(xxd -l4 -ps /dev/urandom).copy"
-
-# Hooks for recursive removing of a temporary directory.
-trap 'rm -rf ${tmp_d}' EXIT HUP QUIT TERM INT ABRT
+tmp_cf="${tmp_d}/${filename}${suffix}.copy"
 
 # Move the contents of a temporary file to its copy for later comparison.
 cat "${tmp_f}" > "${tmp_cf}"
