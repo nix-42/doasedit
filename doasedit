@@ -19,21 +19,26 @@
 #                   # chown -c root:root /path/to/doas.conf && chmod 0400 path/to/doas.conf
 #
 
+# Throw information message.
+info() {
+    printf "%s\n" "$(basename ${0}): ${1}" >&2
+}
+
 # Throw error message.
-err() {
-    printf "%s%s\n" "doasedit: " "${1}" >&2
+error() {
+    printf "%s\n" "$(basename ${0}): ${1}" >&2
     exit "${2}"
 }
 
 # Catch arguments.
 if [ -n "${2}" ]; then
-    err "expected only one argument" 1
+    error "expected only one argument" 1
 elif [ -z "${1}" ]; then
-    err "no file path provided" 2
+    error "no file path provided" 2
 elif [ "$(id -u)" -eq 0 ]; then
-    err "doasedit: cannot be run as root" 3
+    error "cannot be run as root" 3
 elif [ -d "${1}" ]; then
-    err "${1} is a directory" 4
+    error "${1} is a directory" 4
 fi
 
 # Safe shell options.
@@ -71,19 +76,19 @@ tmp_f="${tmp_d}/${filename}${suffix}${file_extension}"
 
 # File writeability condition.
 if [ -w "$src" ]; then
-    err "$filename: editing files in a writable directory is not permitted" 5
+    error "$filename: editing files in a writable directory is not permitted" 5
 fi
 
 # Other conditions: if file exist, readable, etc.
 if [ -f "${src}" ] && [ ! -r "${src}" ]; then
-    doas cat "${src}" > "${tmp_f}" || err "the file is not readable" 6
+    doas cat "${src}" > "${tmp_f}" || error "the file is not readable" 6
 elif [ -r "${src}" ]; then
-    cat "${src}" > "${tmp_f}" || err "cannot transfer to content of the file to temporary one" 7
+    cat "${src}" > "${tmp_f}" || error "cannot transfer to content of the file to temporary one" 7
 elif [ ! -f "${src}" ]; then
     # Grant .rw-r--r-- permission for newly created files by default owned by root.
-    :> "${tmp_f}" && doas chmod -R 0644 "${tmp_f}" || err "cannot create new file" 8
+    :> "${tmp_f}" && doas chmod -R 0644 "${tmp_f}" || error "cannot create new file" 8
 else
-    err "unexpected script behaviour" 9
+    error "unexpected script behaviour" 9
 fi
 
 # Create copy of the temporary file.
@@ -97,12 +102,12 @@ ${EDITOR:-vi} "${tmp_f}"
 
 # Compare the temporary file and the temporary copy.
 if cmp -s "${tmp_f}" "${tmp_cf}"; then
-    printf "%s\n" "doasedit: $filename unchanged"
+    info "${filename} unchanged"
     exit 0
 else
     # Replace the source file with temporary, repeats three times if it fails.
-    for doas_tries in $(seq 1 3); do doas cp -f "${tmp_f}" "${src}" && break; done
-    printf "%s\n" "doasedit: $filename changes are accepted"
+    for doas_promt_try in $(seq 1 3); do doas cp -f "${tmp_f}" "${src}" && break; done
+    info "${filename} changes are accepted"
     exit 0
 fi
 
