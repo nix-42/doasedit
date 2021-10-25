@@ -21,7 +21,7 @@
 
 # Throw information message.
 info() {
-    printf "%s\n" "$(basename ${0}): ${1}" >&2
+    printf "%s\n" "$(basename ${0}): ${1}"
 }
 
 # Throw error message.
