@@ -106,7 +106,11 @@ if cmp -s "${tmp_f}" "${tmp_cf}"; then
     exit 0
 else
     # Replace the source file with temporary, repeats three times if it fails
-    for doas_promt_try in $(seq 1 3); do doas cp -f "${tmp_f}" "${src}" && break; done
+    attempt=0
+    until doas cp -f "${tmp_f}" "${src}"; do
+        attempt=$((attempt + 1))
+        [ "${attempt}" -ge 3 ] && error "cannot accept changes"
+    done
     info "${filename} changes are accepted"
     exit 0
 fi
