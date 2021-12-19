@@ -39,8 +39,20 @@ msg() {
 
 # Throw error message
 error() {
-    printf "%s\n" "$(basename ${0}): ${1}" >&2
+    printf "%s\n" "$(basename ${0}): ${1}" 2>&1
     exit 1
+}
+
+# The name of the function speaks for itself
+alphanum() {
+    if [ -c "${RANDOM_DEVICE}" ]; then
+        # Use od utility if /dev/random or /dev/urandom exists, od is used in most of systems
+        printf "%s" $(od -vN4 -An -tx1 ${RANDOM_DEVICE} | tr -d " \n") || error "cannot generate alphanumeric string"
+    else
+        # Most POSIX way I found to generate alphanumeric string via awk (POSIX)
+        printf "%s" $(awk 'BEGIN { srand(); s=""; chars="abcdefghijklmnopqrstuvwxyz0123456789"; for(i=0;i<8;i++) { s=s""substr(chars,int(rand()*36),1); } print s }') || error "cannot generate alphanumeric string"
+
+    fi
 }
 
 # POSIX compliant version of readlink
@@ -80,15 +92,9 @@ readlinkf() {
     return 1
 }
 
-# The name of the function speaks for itself
-alphanum() {
-    if [ -c "${RANDOM_DEVICE}" ]; then
-        # Use od utility if /dev/random or /dev/urandom exists, od is used in most of systems
-        printf "%s" $(od -vN4 -An -tx1 ${RANDOM_DEVICE} | tr -d " \n")
-    else
-        # Most POSIX way I found to generate alphanumeric string via awk (POSIX)
-        printf "%s" $(awk 'BEGIN { srand(); s=""; chars="abcdefghijklmnopqrstuvwxyz0123456789"; for(i=0;i<8;i++) { s=s""substr(chars,int(rand()*36),1); } print s }')
-    fi
+mktempd() {
+    dir="${TMPDIR}/$(alphanum).tmp" && mkdir "${dir}"
+    [ -d ${dir} ] && printf "${dir}" || error "cannot create temporary directory"
 }
 
 # Reset doas password promt. If you want, feel free to comment this
@@ -107,7 +113,7 @@ filename="${src##*/}"
 [ "$filename" = "${filename##*.}" ] && file_extension="" || file_extension=".${filename##*.}"
 
 # Create a temporary directory
-tmp_d=$(mktemp -d)
+tmp_d=$(mktempd)
 
 # Hooks for recursive removing of a temporary directory
 trap 'rm -rf ${tmp_d}' EXIT HUP QUIT TERM INT ABRT
