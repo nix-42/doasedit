@@ -19,8 +19,13 @@
 #                   # chown -c root:root /path/to/doas.conf && chmod 0400 path/to/doas.conf
 #
 
+# VARIABLES
+
 # Be sure /tmp as tmp directory by setting TMPDIR env
 export TMPDIR=/tmp
+
+# Set path to random device
+export RANDOM_DEVICE=/dev/urandom
 
 # Catch arguments.
 if [ -n "${2}" ]; then
@@ -69,7 +74,7 @@ tmp_d=$(mktemp -d)
 trap 'rm -rf ${tmp_d}' EXIT HUP QUIT TERM INT ABRT
 
 # Randomize suffix for temporary files
-suffix=$(xxd -l4 -ps /dev/urandom)
+suffix=$(od -vN4 -An -tx1 ${RANDOM_DEVICE} | tr -d " \n")
 
 # Create a temporary file for the source file in a temporary directory
 tmp_f="${tmp_d}/${filename}${suffix}${file_extension}"
