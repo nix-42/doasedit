@@ -19,30 +19,33 @@
 #                   # chown -c root:root /path/to/doas.conf && chmod 0400 path/to/doas.conf
 #
 
-# Throw information message.
-info() {
-    printf "%s\n" "$(basename ${0}): ${1}"
-}
-
-# Throw error message.
-error() {
-    printf "%s\n" "$(basename ${0}): ${1}" >&2
-    exit "${2}"
-}
+# Be sure /tmp as tmp directory by setting TMPDIR env
+export TMPDIR=/tmp
 
 # Catch arguments.
 if [ -n "${2}" ]; then
-    error "expected only one argument" 1
+    error "expected only one argument"
 elif [ -z "${1}" ]; then
-    error "no file path provided" 2
+    error "no file path provided"
 elif [ "$(id -u)" -eq 0 ]; then
-    error "cannot be run as root" 3
+    error "cannot be run as root"
 elif [ -d "${1}" ]; then
-    error "${1} is a directory" 4
+    error "${1} is a directory"
 fi
 
 # Safe shell options
 set -eu
+
+# Throw information message
+msg() {
+    printf "%s\n" "$(basename ${0}): ${1}"
+}
+
+# Throw error message
+error() {
+    printf "%s\n" "$(basename ${0}): ${1}" >&2
+    exit 1
+}
 
 # Reset doas password promt. If you want, feel free to comment this
 case "$(uname -s | tr '[:upper:]' '[:lower:]')" in
@@ -59,9 +62,6 @@ filename="${src##*/}"
 # It's kinda useful for editors, that have plugins or something else for certain file extensions
 [ "$filename" = "${filename##*.}" ] && file_extension="" || file_extension=".${filename##*.}"
 
-# Be sure /tmp as tmp directory by setting TMPDIR env
-export TMPDIR=/tmp
-
 # Create a temporary directory
 tmp_d=$(mktemp -d)
 
@@ -76,19 +76,19 @@ tmp_f="${tmp_d}/${filename}${suffix}${file_extension}"
 
 # File writeability condition
 if [ -w "$src" ]; then
-    error "$filename: editing files in a writable directory is not permitted" 5
+    error "$filename: editing files in a writable directory is not permitted"
 fi
 
-# Other conditions: if file exist, readable, etc
+# Other conditions: if file exist, readable, et cetera
 if [ -f "${src}" ] && [ ! -r "${src}" ]; then
-    doas cat "${src}" > "${tmp_f}" || error "the file is not readable" 6
+    doas cat "${src}" > "${tmp_f}" || error "the file is not readable"
 elif [ -r "${src}" ]; then
-    cat "${src}" > "${tmp_f}" || error "cannot transfer to content of the file to temporary one" 7
+    cat "${src}" > "${tmp_f}" || error "cannot transfer to content of the file to temporary one"
 elif [ ! -f "${src}" ]; then
     # Grant .rw-r--r-- permission for newly created files by default owned by root
-    :> "${tmp_f}" && doas chmod -R 0644 "${tmp_f}" || error "cannot create new file" 8
+    :> "${tmp_f}" && doas chmod -R 0644 "${tmp_f}" || error "cannot create new file"
 else
-    error "unexpected script behaviour" 9
+    error "unexpected script behaviour"
 fi
 
 # Create copy of the temporary file
@@ -102,7 +102,7 @@ ${EDITOR:-vi} "${tmp_f}"
 
 # Compare the temporary file and the temporary copy
 if cmp -s "${tmp_f}" "${tmp_cf}"; then
-    info "${filename} unchanged"
+    msg "${filename} unchanged"
     exit 0
 else
     # Replace the source file with temporary, repeats three times if it fails
@@ -111,7 +111,7 @@ else
         attempt=$((attempt + 1))
         [ "${attempt}" -ge 3 ] && error "cannot accept changes"
     done
-    info "${filename} changes are accepted"
+    msg "${filename} changes are accepted"
     exit 0
 fi
 
