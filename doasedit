@@ -43,13 +43,61 @@ error() {
     exit 1
 }
 
+# POSIX compliant version of readlink
+# Credit: https://github.com/ko1nksm/readlinkf
+readlinkf() {
+    [ "${1:-}" ] || return 1
+    max_symlinks=40
+    # to avoid changing to an unexpected directory
+    CDPATH=''
+
+    target=$1
+    # trim trailing slashes
+    [ -e "${target%/}" ] || target=${1%"${1##*[!/]}"}
+    [ -d "${target:-/}" ] && target="$target/"
+
+    cd -P . 2>/dev/null || return 1
+    while [ "$max_symlinks" -ge 0 ] && max_symlinks=$((max_symlinks - 1)); do
+        if [ ! "$target" = "${target%/*}" ]; then
+            case $target in
+                /*) cd -P "${target%/*}/" 2>/dev/null || break ;;
+                *) cd -P "./${target%/*}" 2>/dev/null || break ;;
+            esac
+            target=${target##*/}
+        fi
+        if [ ! -L "$target" ]; then
+            target="${PWD%/}${target:+/}${target}"
+            printf '%s\n' "${target:-/}"
+            return 0
+        fi
+        # `ls -dl` format: "%s %u %s %s %u %s %s -> %s\n",
+        #   <file mode>, <number of links>, <owner name>, <group name>,
+        #   <size>, <date and time>, <pathname of link>, <contents of link>
+        # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ls.html
+        link=$(ls -dl -- "$target" 2>/dev/null) || break
+        target=${link#*" $target -> "}
+    done
+    return 1
+}
+
+# The name of the function speaks for itself
+alphanum() {
+    if [ -c "${RANDOM_DEVICE}" ]; then
+        # Use od utility if /dev/random or /dev/urandom exists, od is used in most of systems
+        printf "%s" $(od -vN4 -An -tx1 ${RANDOM_DEVICE} | tr -d " \n")
+    else
+        # Most POSIX way I found to generate alphanumeric string via awk (POSIX)
+        printf "%s" $(awk 'BEGIN { srand(); s=""; chars="abcdefghijklmnopqrstuvwxyz0123456789"; for(i=0;i<8;i++) { s=s""substr(chars,int(rand()*36),1); } print s }')
+    fi
+}
+
 # Reset doas password promt. If you want, feel free to comment this
 case "$(uname -s | tr '[:upper:]' '[:lower:]')" in
     linux) doas -L ;;
 esac
 
 # Absolute path to the source file (file for editing)
-src="$(doas readlink -f "${1}")"
+src="$(readlinkf "${1}")"
 
 # Filename for the source file
 filename="${src##*/}"
@@ -65,7 +113,7 @@ tmp_d=$(mktemp -d)
 trap 'rm -rf ${tmp_d}' EXIT HUP QUIT TERM INT ABRT
 
 # Randomize suffix for temporary files
-suffix=$(od -vN4 -An -tx1 ${RANDOM_DEVICE} | tr -d " \n")
+suffix=$(alphanum)
 
 # Create a temporary file for the source file in a temporary directory
 tmp_f="${tmp_d}/${filename}${suffix}${file_extension}"
