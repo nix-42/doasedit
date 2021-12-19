@@ -14,12 +14,7 @@ INSTALLATION
 
         $ curl -sL http://git.io/doasedit.raw | doas tee /usr/local/bin/doasedit
         $ doas chmod +x /usr/local/bin/doasedit
-        
-    AUR (for Arch/Arch-based distributions):
-    
-        $ git clone https://aur.archlinux.org/doasedit-git.git
-        $ cd doasedit-git && makepkg -si
-    
+
 EXAMPLES
     To run an editor as non-root:
 
@@ -31,7 +26,7 @@ TIPS
         `permit persist :wheel`
 
     Also make sure that your doas.conf is owned by root with read-only permissions, like:
-    
+
         # chown -c root:root /path/to/doas.conf && chmod 0400 path/to/doas.conf
 
 LICENSE
