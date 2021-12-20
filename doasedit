@@ -50,7 +50,8 @@ alphanum() {
         printf "%s" "$(od -vN4 -An -tx1 ${RANDOM_DEVICE} | tr -d ' \n')" || error "cannot generate alphanumeric string"
     else
         # Most POSIX way I found to generate alphanumeric string via awk (POSIX)
-        printf "%s" "$(awk 'BEGIN { srand(); s=""; chars="abcdefghijklmnopqrstuvwxyz0123456789"; for(i=0;i<8;i++) { s=s""substr(chars,int(rand()*36),1); } print s }')" || error "cannot generate alphanumeric string"
+        seed=$(date +%s)
+        printf "%s" "$(awk -v seed=${seed} 'BEGIN { srand(seed); s=""; chars="abcdefghijklmnopqrstuvwxyz0123456789"; for(i=0;i<8;i++) { s=s""substr(chars,int(rand()*36),1); } print s }')" || error "cannot generate alphanumeric string"
     fi
 }
 
