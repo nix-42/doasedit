@@ -44,14 +44,17 @@ fi
 set -eu
 
 # The name of the function speaks for itself
-alphanum() {
-    if [ -c "${RANDOM_DEVICE}" ]; then
+randstr() {
+    if [ -c "${RANDOM_DEVICE}" ] && [ $(command -v od) ]; then
         # Use od utility if /dev/random or /dev/urandom exists, od is used in most of systems
         printf "%s" "$(od -vN4 -An -tx1 ${RANDOM_DEVICE} | tr -d ' \n')" || error "cannot generate alphanumeric string"
-    else
+    elif [ $(command -v awk) ]; then
         # Most POSIX way I found to generate alphanumeric string via awk (POSIX)
         seed=$(date +%s)
         printf "%s" "$(awk -v seed=${seed} 'BEGIN { srand(seed); s=""; chars="abcdefghijklmnopqrstuvwxyz0123456789"; for(i=0;i<8;i++) { s=s""substr(chars,int(rand()*36),1); } print s }')" || error "cannot generate alphanumeric string"
+    else
+        # Just plain date, numeric only
+        printf "%s" "$(date %s)" || error "cannot generate alphanumeric string"
     fi
 }
 
@@ -89,7 +92,7 @@ readlinkf() {
 
 # Create temporary directory
 mktempd() {
-    dir="${TMPDIR}/$(alphanum).tmp" && mkdir "${dir}"
+    dir="${TMPDIR}/$(randstr).tmp" && mkdir "${dir}"
     [ -d "${dir}" ] && printf "${dir}" || error "cannot create temporary directory"
 }
 
@@ -115,7 +118,7 @@ tmp_d=$(mktempd)
 trap 'rm -rf ${tmp_d}' EXIT HUP QUIT TERM INT ABRT
 
 # Randomize suffix for temporary files
-suffix=$(alphanum)
+suffix=$(randstr)
 
 # Create a temporary file for the source file in a temporary directory
 tmp_f="${tmp_d}/${filename}${suffix}${file_extension}"
