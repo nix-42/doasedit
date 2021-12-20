@@ -18,6 +18,17 @@ export TMPDIR=/tmp
 # Set path to random device
 export RANDOM_DEVICE=/dev/urandom
 
+# Throw information message
+msg() {
+    printf "%s\n" "$(basename ${0}): ${1}"
+}
+
+# Throw error message
+error() {
+    printf "%s\n" "$(basename ${0}): ${1}" 2>&1
+    exit 1
+}
+
 # Catch arguments.
 if [ -n "${2}" ]; then
     error "expected only one argument"
@@ -32,17 +43,6 @@ fi
 # Safe shell options
 set -eu
 
-# Throw information message
-msg() {
-    printf "%s\n" "$(basename ${0}): ${1}"
-}
-
-# Throw error message
-error() {
-    printf "%s\n" "$(basename ${0}): ${1}" 2>&1
-    exit 1
-}
-
 # The name of the function speaks for itself
 alphanum() {
     if [ -c "${RANDOM_DEVICE}" ]; then
@@ -51,7 +51,6 @@ alphanum() {
     else
         # Most POSIX way I found to generate alphanumeric string via awk (POSIX)
         printf "%s" "$(awk 'BEGIN { srand(); s=""; chars="abcdefghijklmnopqrstuvwxyz0123456789"; for(i=0;i<8;i++) { s=s""substr(chars,int(rand()*36),1); } print s }')" || error "cannot generate alphanumeric string"
-
     fi
 }
 
@@ -62,12 +61,10 @@ readlinkf() {
     max_symlinks=40
     # to avoid changing to an unexpected directory
     CDPATH=''
-
     target=$1
     # trim trailing slashes
     [ -e "${target%/}" ] || target=${1%"${1##*[!/]}"}
     [ -d "${target:-/}" ] && target="$target/"
-
     cd -P . 2>/dev/null || return 1
     while [ "$max_symlinks" -ge 0 ] && max_symlinks=$((max_symlinks - 1)); do
         if [ ! "$target" = "${target%/*}" ]; then
@@ -82,9 +79,6 @@ readlinkf() {
             printf '%s\n' "${target:-/}"
             return 0
         fi
-        # `ls -dl` format: "%s %u %s %s %u %s %s -> %s\n",
-        #   <file mode>, <number of links>, <owner name>, <group name>,
-        #   <size>, <date and time>, <pathname of link>, <contents of link>
         # https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ls.html
         link=$(ls -dl -- "$target" 2>/dev/null) || break
         target=${link#*" $target -> "}
