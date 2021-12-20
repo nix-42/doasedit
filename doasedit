@@ -51,7 +51,7 @@ randstr() {
     elif [ $(command -v awk) ]; then
         # Most POSIX way I found to generate alphanumeric string via awk (POSIX)
         seed=$(date +%s)
-        printf "%s" "$(awk -v seed=${seed} 'BEGIN { srand(seed); s=""; chars="abcdefghijklmnopqrstuvwxyz0123456789"; for(i=0;i<8;i++) { s=s""substr(chars,int(rand()*36),1); } print s }')" || error "cannot generate alphanumeric string"
+        printf "%s" "$(awk -v seed=${seed} 'BEGIN { srand(seed); s=""; chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"; for(i=0;i<8;i++) { s=s""substr(chars,int(rand()*62),1); } print s }')" || error "cannot generate alphanumeric string"
     else
         # Just plain date, numeric only
         printf "%s" "$(date %s)" || error "cannot generate alphanumeric string"
@@ -109,7 +109,11 @@ filename="${src##*/}"
 
 # If filename have extension then also use it for a temporary file
 # It's kinda useful for editors, that have plugins or something else for certain file extensions
-[ "$filename" = "${filename##*.}" ] && file_extension="" || file_extension=".${filename##*.}"
+if [ "$filename" = "${filename##*.}" ]; then
+    file_extension=""
+else
+    file_extension="${filename##*.}"
+fi
 
 # Create a temporary directory
 tmp_d=$(mktempd)
@@ -121,7 +125,11 @@ trap 'rm -rf ${tmp_d}' EXIT HUP QUIT TERM INT ABRT
 suffix=$(randstr)
 
 # Create a temporary file for the source file in a temporary directory
-tmp_f="${tmp_d}/${filename}${suffix}${file_extension}"
+if [ -z "${file_extension}" ]; then
+    tmp_f="${tmp_d}/${filename}.${suffix}"
+else
+    tmp_f="${tmp_d}/${filename%%.*}${suffix}.${file_extension}"
+fi
 
 # File writeability condition
 if [ -w "$src" ]; then
@@ -141,7 +149,7 @@ else
 fi
 
 # Create copy of the temporary file
-tmp_cf="${tmp_d}/${filename}${suffix}.copy"
+tmp_cf="${tmp_f}.copy"
 
 # Move the contents of a temporary file to its copy for later comparison
 cat "${tmp_f}" > "${tmp_cf}"
