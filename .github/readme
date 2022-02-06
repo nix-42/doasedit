@@ -13,7 +13,8 @@ INSTALLATION
     Globally (for all users):
 
         $ curl -sL http://git.io/doasedit.raw | doas tee /usr/local/bin/doasedit
-        $ doas chmod +x /usr/local/bin/doasedit
+        $ curl -sL http://git.io/doasedit.readlinkf_posix.raw | doas tee /usr/local/bin/readlinkf_posix
+        $ doas chmod +x /usr/local/bin/doasedit && doas chmod +x /usr/local/bin/readlinkf_posix
 
 EXAMPLES
     To run an editor as non-root:
